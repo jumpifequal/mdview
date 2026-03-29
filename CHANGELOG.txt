@@ -1,0 +1,39 @@
+v 2.2
+- add:Contextual Right Click Menu
+- add:Split view mode showing rendered Markdown alongside the raw Markdown source (Ctrl+M)
+- add:Raw Markdown viewer implemented using the Windows RichEdit control
+- add:Configurable monospace font for the raw Markdown pane (now it is wired in the code and uses Cascadia Mono)
+- add:Ratio-based scroll synchronisation between rendered and raw views
+- add:Context-aware clipboard behaviour:
+  * Copy from rendered view places formatted HTML + plain text on the clipboard
+  * Copy from raw view copies the original Markdown text
+- fix:Raw Markdown readability (monospace font, margins, proper wrapping)
+- fix:Scroll synchronisation accuracy between preview and source panes
+- fix:Keyboard shortcut help panel updated with new commands
+- fix:Changed to safe functions (e.g., scanf -> sscanf_s, strncpy -> strncpy_s)
+- fix:Use-after-free bug causing corrupted text in split view raw pane
+- fix:Clipboard behaviour in preview mode copying only plain text
+
+v 2.3
+- add: ctrl-F, F3 and shift-F3 now work correctly
+- add: source code ready to be compiled under WinXP
+- add: font and dimension of split view (ctrl-m) is now in ini file
+- add: ctrl-A to select all (do it like ctrl-c in the window with the focus)
+- add: ESC in split view exit from lister
+
+v 2.4
+- add: built-in Mermaid rendering for flowchart/graph diagrams
+- add: built-in Mermaid rendering for sequenceDiagram diagrams
+- add: built-in Mermaid rendering for classDiagram diagrams
+- add: built-in Mermaid rendering for stateDiagram-v2 diagrams
+- add: Mermaid diagrams are rendered self-contained inside the WLX/WLX64 binaries
+- add: Mermaid diagram typography follows the active viewer font size and font family
+- add: test_mermaid.md contains a dedicated sample set for all Mermaid diagram types currently supported
+- fix: Mermaid SVG sizing now stays visually consistent with the surrounding Markdown layout
+- fix: Mermaid typography is now applied centrally so supported diagram types use the active viewer font size and font family more consistently
+- fix: sequenceDiagram parsing now handles arrow operators such as -->> correctly without creating malformed participant names
+- fix: sequenceDiagram note boxes now wrap long text correctly and keep note text inside the note rectangle
+- fix: classDiagram relation parsing now recognises operators containing >
+- fix: classDiagram routing avoids passing inter-row relations through class boxes and reduces label collisions in dense layouts
+- fix: stateDiagram parsing now handles pseudo-states correctly and renders simple vertical flows with direct state-to-state arrows
+- add: WLXharness now supports commandline to test during development (WLXHarness <pathto wlx|wlx64> <path to md file>)
