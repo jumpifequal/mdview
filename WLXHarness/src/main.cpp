@@ -1,6 +1,7 @@
 
 #include <windows.h>
 #include <commdlg.h>
+#include <shellapi.h>
 #include <string>
 
 typedef HWND (WINAPI *PFN_ListLoadW)(HWND, const WCHAR*, int);
@@ -40,17 +41,27 @@ LRESULT CALLBACK HostWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) 
 }
 
 int APIENTRY wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int) {
+    int argc = 0;
+    LPWSTR* argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+
     // Ask for WLX path
     wchar_t wlxPath[MAX_PATH] = L"";
-    OPENFILENAMEW ofn{};
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = NULL;
-    ofn.lpstrFilter = L"Lister Plugin (*.wlx)\0*.wlx\0\0";
-    ofn.lpstrFile = wlxPath;
-    ofn.nMaxFile = MAX_PATH;
-    ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
-    ofn.lpstrTitle = L"Select mdview.wlx";
-    if (!GetOpenFileNameW(&ofn)) return 0;
+    if (argc >= 2 && argv && argv[1] && argv[1][0]) {
+        wcsncpy_s(wlxPath, MAX_PATH, argv[1], _TRUNCATE);
+    } else {
+        OPENFILENAMEW ofn{};
+        ofn.lStructSize = sizeof(ofn);
+        ofn.hwndOwner = NULL;
+        ofn.lpstrFilter = L"Lister Plugin (*.wlx)\0*.wlx\0\0";
+        ofn.lpstrFile = wlxPath;
+        ofn.nMaxFile = MAX_PATH;
+        ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
+        ofn.lpstrTitle = L"Select mdview.wlx";
+        if (!GetOpenFileNameW(&ofn)) {
+            if (argv) LocalFree(argv);
+            return 0;
+        }
+    }
 
     // Load plugin
     HMODULE mod = LoadLibraryW(wlxPath);
@@ -79,8 +90,16 @@ int APIENTRY wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int) {
     if (!host) return 0;
 
     // Choose a md file
-    std::wstring md = OpenFileDialog(L"md Files (*.md)\0*.md\0All Files (*.*)\0*.*\0\0");
-    if (md.empty()) return 0;
+    std::wstring md;
+    if (argc >= 3 && argv && argv[2] && argv[2][0]) {
+        md = argv[2];
+    } else {
+        md = OpenFileDialog(L"md Files (*.md)\0*.md\0All Files (*.*)\0*.*\0\0");
+    }
+    if (md.empty()) {
+        if (argv) LocalFree(argv);
+        return 0;
+    }
 
     // Call ListLoadW
     HWND child = pListLoadW(host, md.c_str(), 0);
@@ -103,5 +122,6 @@ int APIENTRY wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR, int) {
     // Close plugin window
     pListCloseWindow(child);
     FreeLibrary(mod);
+    if (argv) LocalFree(argv);
     return 0;
 }
