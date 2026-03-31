@@ -147,7 +147,6 @@ static void save_setting_str(const char* key, const wchar_t* val) {
     WritePrivateProfileStringA("MDView", key, buf, g_iniPath);
 }
 
-//Wrapper for SetWindowLongPtr / SetWindowLong to avoid warnings and support both 32-bit and 64-bit Windows with the same code.
 static LONG_PTR mdview_set_window_ptr(HWND hwnd, int index, LONG_PTR value) {
 #if defined(_WIN64)
     return SetWindowLongPtrW(hwnd, index, value);
@@ -158,7 +157,6 @@ static LONG_PTR mdview_set_window_ptr(HWND hwnd, int index, LONG_PTR value) {
 #endif
 }
 
-//Wrapper for GetWindowLongPtr / GetWindowLong to avoid warnings and support both 32-bit and 64-bit Windows with the same code.
 static LONG_PTR mdview_get_window_ptr(HWND hwnd, int index) {
 #if defined(_WIN64)
     return GetWindowLongPtrW(hwnd, index);
@@ -887,10 +885,47 @@ static SiteImpl* CreateSiteImpl(HWND hwnd) {
 
 typedef struct { char* data; size_t len; size_t cap; } StrBuf;
 
-static void sb_init(StrBuf* sb) { sb->cap=4096; sb->data=(char*)malloc(sb->cap); sb->data[0]='\0'; sb->len=0; }
-static void sb_ensure(StrBuf* sb, size_t x) { while(sb->len+x+1>sb->cap){sb->cap*=2; sb->data=(char*)realloc(sb->data,sb->cap);} }
-static void sb_append(StrBuf* sb, const char* s) { size_t n=strlen(s); sb_ensure(sb,n); memcpy(sb->data+sb->len,s,n); sb->len+=n; sb->data[sb->len]='\0'; }
-static void sb_append_char(StrBuf* sb, char c) { sb_ensure(sb,1); sb->data[sb->len++]=c; sb->data[sb->len]='\0'; }
+enum { MDVIEW_MAX_FILE_SIZE = 16 * 1024 * 1024 };
+
+static int sb_init(StrBuf* sb) {
+    sb->cap = 4096;
+    sb->data = (char*)malloc(sb->cap);
+    if (!sb->data) {
+        sb->cap = 0;
+        sb->len = 0;
+        return 0;
+    }
+    sb->data[0] = '\0';
+    sb->len = 0;
+    return 1;
+}
+
+static int sb_ensure(StrBuf* sb, size_t x) {
+    while (sb->len + x + 1 > sb->cap) {
+        size_t newCap = sb->cap ? sb->cap * 2 : 4096;
+        char* newData = (char*)realloc(sb->data, newCap);
+        if (!newData) return 0;
+        sb->data = newData;
+        sb->cap = newCap;
+    }
+    return 1;
+}
+
+static int sb_append(StrBuf* sb, const char* s) {
+    size_t n = strlen(s);
+    if (!sb_ensure(sb, n)) return 0;
+    memcpy(sb->data + sb->len, s, n);
+    sb->len += n;
+    sb->data[sb->len] = '\0';
+    return 1;
+}
+
+static int sb_append_char(StrBuf* sb, char c) {
+    if (!sb_ensure(sb, 1)) return 0;
+    sb->data[sb->len++] = c;
+    sb->data[sb->len] = '\0';
+    return 1;
+}
 static void sb_append_esc(StrBuf* sb, const char* s, size_t n) {
     for(size_t i=0;i<n;i++) switch(s[i]){
         case '&': sb_append(sb,"&amp;"); break;
@@ -912,6 +947,21 @@ static void append_mermaid_block(StrBuf* sb, const char* src, size_t n) {
     sb_append(sb, "<div class=\"mdv-mermaid\" data-mdv-mermaid=\"1\"><pre class=\"mdv-mermaid-src\"><code>");
     sb_append_esc(sb, src, n);
     sb_append(sb, "</code></pre><div class=\"mdv-mermaid-view\"></div></div>\n");
+}
+
+static int is_safe_url_scheme(const char* url, size_t len, int allowMailto) {
+    if (!url || len == 0) return 0;
+
+    while (len > 0 && (*url == ' ' || *url == '\t' || *url == '\r' || *url == '\n')) {
+        ++url;
+        --len;
+    }
+    if (len == 0) return 0;
+
+    if (len >= 8 && _strnicmp(url, "https://", 8) == 0) return 1;
+    if (len >= 7 && _strnicmp(url, "http://", 7) == 0) return 1;
+    if (allowMailto && len >= 7 && _strnicmp(url, "mailto:", 7) == 0) return 1;
+    return 0;
 }
 
 /* ── Markdown Inline Parser ──────────────────────────────────────────── */
@@ -948,9 +998,16 @@ static void parse_inline(StrBuf* sb, const char* t, size_t len) {
             while(j<len&&d>0){if(t[j]=='[')d++;else if(t[j]==']')d--;if(d>0)j++;}
             if(j<len&&j+1<len&&t[j+1]=='('){
                 size_t us=j+2,ue=us; while(ue<len&&t[ue]!=')')ue++;
-                if(ue<len){ sb_append(sb,"<img alt=\""); sb_append_esc(sb,t+as,j-as);
-                    sb_append(sb,"\" src=\""); sb_append_esc(sb,t+us,ue-us);
-                    sb_append(sb,"\" style=\"max-width:100%\">"); i=ue+1; continue; }
+                if(ue<len){
+                    if (is_safe_url_scheme(t + us, ue - us, 0)) {
+                        sb_append(sb,"<img alt=\""); sb_append_esc(sb,t+as,j-as);
+                        sb_append(sb,"\" src=\""); sb_append_esc(sb,t+us,ue-us);
+                        sb_append(sb,"\" style=\"max-width:100%\">");
+                    } else {
+                        sb_append_esc(sb, t + i, ue + 1 - i);
+                    }
+                    i=ue+1; continue;
+                }
             }
         }
         /* Link [text](url) */
@@ -959,8 +1016,15 @@ static void parse_inline(StrBuf* sb, const char* t, size_t len) {
             while(j<len&&d>0){if(t[j]=='[')d++;else if(t[j]==']')d--;if(d>0)j++;}
             if(j<len&&j+1<len&&t[j+1]=='('){
                 size_t us=j+2,ue=us; while(ue<len&&t[ue]!=')')ue++;
-                if(ue<len){ sb_append(sb,"<a href=\""); sb_append_esc(sb,t+us,ue-us);
-                    sb_append(sb,"\">"); parse_inline(sb,t+ts,j-ts); sb_append(sb,"</a>"); i=ue+1; continue; }
+                if(ue<len){
+                    if (is_safe_url_scheme(t + us, ue - us, 1)) {
+                        sb_append(sb,"<a href=\""); sb_append_esc(sb,t+us,ue-us);
+                        sb_append(sb,"\">"); parse_inline(sb,t+ts,j-ts); sb_append(sb,"</a>");
+                    } else {
+                        sb_append_esc(sb, t + i, ue + 1 - i);
+                    }
+                    i=ue+1; continue;
+                }
             }
         }
         /* Strikethrough ~~text~~ */
@@ -1000,13 +1064,23 @@ static void parse_inline(StrBuf* sb, const char* t, size_t len) {
 
 static int count_leading(const char* l, char c) { int n=0; while(l[n]==c)n++; return n; }
 typedef struct { char** lines; int count; } Lines;
+static void free_lines(Lines* l);
 static Lines split_lines(const char* text) {
     Lines r; r.count=0; int cap=256; r.lines=(char**)malloc(cap*sizeof(char*));
+    if (!r.lines) return r;
     const char* p=text;
     while(*p){ const char* eol=p; while(*eol&&*eol!='\n')eol++;
         size_t ll=eol-p; if(ll>0&&p[ll-1]=='\r')ll--;
-        char* line=(char*)malloc(ll+1); memcpy(line,p,ll); line[ll]='\0';
-        if(r.count>=cap){cap*=2;r.lines=(char**)realloc(r.lines,cap*sizeof(char*));}
+        char* line=(char*)malloc(ll+1);
+        if(!line){ free_lines(&r); r.lines=NULL; r.count=0; return r; }
+        memcpy(line,p,ll); line[ll]='\0';
+        if(r.count>=cap){
+            char** newLines;
+            cap*=2;
+            newLines=(char**)realloc(r.lines,cap*sizeof(char*));
+            if(!newLines){ free(line); free_lines(&r); r.lines=NULL; r.count=0; return r; }
+            r.lines=newLines;
+        }
         r.lines[r.count++]=line; p=eol; if(*p=='\n')p++;
     } return r;
 }
@@ -1050,6 +1124,11 @@ static int is_ol(const char* t) { int i=0; while(t[i]>='0'&&t[i]<='9')i++; if(i=
 static char* md_to_html(const char* markdown) {
     StrBuf sb; sb_init(&sb);
     Lines lines = split_lines(markdown);
+    if (!sb.data || !lines.lines) {
+        if (sb.data) free(sb.data);
+        if (lines.lines) free_lines(&lines);
+        return NULL;
+    }
     int i = 0;
 
     while (i < lines.count) {
@@ -1504,10 +1583,22 @@ static void build_js(StrBuf* sb) {
     "for(var i=0;i<hs.length;i++){var h=hs[i],a=document.createElement('a');"
     "a.className='ti t'+h.tagName.charAt(1);a.innerText=h.innerText;a.href='#'+h.id;"
     "a.onclick=(function(id){return function(e){e.preventDefault?e.preventDefault():e.returnValue=false;var el=document.getElementById(id);if(el)el.scrollIntoView()}})(h.id);"
-    "toc.appendChild(a)}}"
+    "toc.appendChild(a)}initLinkTooltips()}"
     "function ttoc(){var toc=document.getElementById('mdv-toc');"
     "if(toc.className.indexOf('on')>=0){toc.className='';document.body.style.marginRight='0'}"
     "else{btoc();toc.className='on';document.body.style.marginRight='280px'}}"
+
+    /* Link tooltip preview */
+    "function mdvLinkTitleText(a){var href,raw;if(!a)return '';"
+    "raw=a.getAttribute?a.getAttribute('href'):null;"
+    "if(!raw)return '';"
+    "if(raw.charAt&&raw.charAt(0)==='#')return raw;"
+    "href=a.href||raw;"
+    "return href||'';}"
+    "function initLinkTooltips(){var as=document.getElementsByTagName('a'),i,a,t;"
+    "for(i=0;i<as.length;i++){a=as[i];t=mdvLinkTitleText(a);if(!t)continue;"
+    "if(typeof a._mdvOrigTitle==='undefined')a._mdvOrigTitle=a.getAttribute('title');"
+    "a.title=t;}}"
 
     /* Find */
     "var fm=[],fi=-1;"
@@ -1899,7 +1990,7 @@ static void build_js(StrBuf* sb) {
     "inp.onkeyup=trig;"
     "inp.oninput=trig;"
     "}"
-    "initMermaid();shAll();initCollapse();"
+    "initMermaid();shAll();initCollapse();initLinkTooltips();"
     "if(ln)tl();"  /* apply line numbers if saved */
     "up()};"
     "</script>");
@@ -2006,9 +2097,15 @@ static void js_find_step(MDViewData* d, int backwards) {
 
 static char* read_file_utf8(const char* fn) {
     FILE* f=fopen(fn,"rb"); if(!f)return NULL;
-    fseek(f,0,SEEK_END); long sz=ftell(f); fseek(f,0,SEEK_SET);
-    char* buf=(char*)malloc(sz+1); if(!buf){fclose(f);return NULL;}
-    fread(buf,1,sz,f); buf[sz]='\0'; fclose(f);
+    if (fseek(f,0,SEEK_END) != 0) { fclose(f); return NULL; }
+    long sz=ftell(f);
+    if (sz < 0 || sz > MDVIEW_MAX_FILE_SIZE) { fclose(f); return NULL; }
+    if (fseek(f,0,SEEK_SET) != 0) { fclose(f); return NULL; }
+    char* buf=(char*)malloc((size_t)sz+1); if(!buf){fclose(f);return NULL;}
+    size_t read = fread(buf,1,(size_t)sz,f);
+    fclose(f);
+    if (read != (size_t)sz) { free(buf); return NULL; }
+    buf[sz]='\0';
     if(sz>=3&&(unsigned char)buf[0]==0xEF&&(unsigned char)buf[1]==0xBB&&(unsigned char)buf[2]==0xBF)
         memmove(buf,buf+3,sz-2);
     return buf;

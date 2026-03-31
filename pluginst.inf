@@ -1,5 +1,5 @@
 [plugininstall]
-description=MDView - Markdown Viewer v2.5
+description=MDView - Markdown Viewer v2.7
 type=wlx
 file=mdview.wlx
 defaultdir=mdview

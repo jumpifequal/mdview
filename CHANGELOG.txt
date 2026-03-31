@@ -46,3 +46,8 @@ v 2.6
 - fix: raw Markdown default font now falls back to Courier New on XP while keeping Cascadia Mono on modern Windows
 - fix: dark theme auto-detection is disabled on XP and remains unchanged on modern Windows
 - change: Mermaid rendering is intentionally disabled on the XP build and falls back to the original source block for stability
+
+v 2.7
+- fix: helper functions to avoid malicious urls inside an md to trigger
+- fix: controlled realloc and cap to lenght limits, to avoid system crash with too long md files
+- add: added mouse tooltip on links
