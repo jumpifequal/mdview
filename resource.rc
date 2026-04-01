@@ -1,0 +1,38 @@
+#include <windows.h>
+#include "resource.h"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version Information resources
+//
+VS_VERSION_INFO VERSIONINFO
+    FILEVERSION VER_FILEVERSION
+    PRODUCTVERSION VER_PRODUCTVERSION
+    FILEOS          VOS_NT_WINDOWS32
+    FILETYPE        VFT_DLL
+    FILESUBTYPE     VFT2_UNKNOWN
+    BEGIN
+        BLOCK "StringFileInfo"
+        BEGIN
+            BLOCK "041904E4"
+            BEGIN
+#ifdef _WIN64
+                VALUE "OriginalFilename", "mdview.wlx64"
+#else
+                VALUE "OriginalFilename", "mdview.wlx"
+#endif
+                VALUE "LegalCopyright", "Copyright (c) Nigurrath, 2026"
+                VALUE "ProductVersion", VER_PRODUCTVERSION_STR
+                VALUE "ProductName", "Markdown Viewer Lister Plugin"
+                VALUE "InternalName", "MDView"
+                VALUE "CompanyName", ""
+                VALUE "Comments", "Markdown Viewer Lister Plugin for Total Commander"
+                VALUE "FileVersion", VER_FILEVERSION_STR
+                VALUE "FileDescription", "Markdown Viewer Lister Plugin for Total Commander"
+            END
+        END
+        BLOCK "VarFileInfo"
+        BEGIN
+            VALUE "Translation", 1049, 1251
+        END
+    END

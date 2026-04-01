@@ -1,0 +1,9 @@
+#ifndef RESOURCE_H_INCLUDED
+#define RESOURCE_H_INCLUDED
+
+#define VER_FILEVERSION                 2,8,0,0
+#define VER_FILEVERSION_STR             "2.8.0\0"
+#define VER_PRODUCTVERSION              VER_FILEVERSION
+#define VER_PRODUCTVERSION_STR          VER_FILEVERSION_STR
+
+#endif // RESOURCE_H_INCLUDED

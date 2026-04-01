@@ -8,15 +8,18 @@ Press `F3` on any `.md` file and get a clean, fully rendered preview with dark m
 
 ---
 
-## WinXP compatibility limitations
+## Windows XP Build
 
-* WinXP uses v141_xp
+The repository includes a dedicated `ReleaseXP|Win32` Visual Studio configuration that produces `mdview_xp.wlx`.
 
-* Compatible with **XP SP3**
+- It targets Windows XP SP3 with `_WIN32_WINNT=0x0501`
+- It uses the XP-capable `v141_xp` toolset together with the legacy Windows SDK support installed in Visual Studio
+- Mermaid rendering falls back to the original source block on XP for stability
+- The XP build is 32-bit only
 
-* Mermaid is not supported: because the MSHTML component on Windows XP does not support SVG. Internet Explorer <= 8
+## Screenshots
 
-* Win XP build supports only Total Commander 32bit 
+> *TODO: Add screenshots of light mode, dark mode, split view, and Mermaid rendering.*
 
 ## Features
 
@@ -29,7 +32,7 @@ Press `F3` on any `.md` file and get a clean, fully rendered preview with dark m
 - **Line numbers** — toggle on code blocks with `Ctrl+L`
 - **Table of Contents** — auto-generated sidebar from headings
 - **Find in page** — incremental search with match highlighting and navigation
-- **Tooltip on links** — on mouse over, the plugin shows the real link to avoid malicious links (e.g. in promptware skills)
+- **Tooltip on links** — hovering a link shows the resolved target URL
 - **Split view** — rendered Markdown alongside the raw Markdown source with `Ctrl+M`
 - **Raw Markdown viewer** — implemented with the Windows RichEdit control using a configurable monospace font
 - **Scroll synchronisation** — rendered HTML and raw Markdown views stay aligned using ratio-based document scrolling
@@ -62,23 +65,23 @@ For the dedicated Windows XP build, Mermaid blocks fall back to the original sou
 
 ## Keyboard Shortcuts
 
-| Shortcut           | Action                            |
-| ------------------ | --------------------------------- |
-| `Ctrl` `+`         | Zoom in                           |
-| `Ctrl` `-`         | Zoom out                          |
-| `Ctrl` `0`         | Reset zoom                        |
-| `Ctrl` `W`         | Constrain column width            |
+| Shortcut | Action |
+|---|---|
+| `Ctrl` `+` | Zoom in |
+| `Ctrl` `-` | Zoom out |
+| `Ctrl` `0` | Reset zoom |
+| `Ctrl` `W` | Constrain column width |
 | `Ctrl` `Shift` `W` | Widen or remove column constraint |
-| `Ctrl` `D`         | Toggle dark / light mode          |
-| `Ctrl` `L`         | Toggle line numbers               |
-| `Ctrl` `T`         | Table of Contents                 |
-| `Ctrl` `F`         | Find in page                      |
-| `Ctrl` `P`         | Print                             |
-| `Ctrl` `G`         | Go to top                         |
-| `Ctrl` `M`         | Toggle split view                 |
-| `Ctrl` `C`         | Copy selection                    |
-| `Esc`              | Close viewer                      |
-| `F1`               | Show shortcut reference           |
+| `Ctrl` `D` | Toggle dark / light mode |
+| `Ctrl` `L` | Toggle line numbers |
+| `Ctrl` `T` | Table of Contents |
+| `Ctrl` `F` | Find in page |
+| `Ctrl` `P` | Print |
+| `Ctrl` `G` | Go to top |
+| `Ctrl` `M` | Toggle split view |
+| `Ctrl` `C` | Copy selection |
+| `Esc` | Close viewer |
+| `F1` | Show shortcut reference |
 
 Press `F1` inside the viewer for an on-screen reference.
 
@@ -121,18 +124,22 @@ Visual Studio configurations:
 
 The `ReleaseXP|Win32` configuration targets `_WIN32_WINNT=0x0501` with the XP toolset and keeps the XP-specific fallbacks isolated in local compatibility helpers.
 
+The project also includes `resource.rc` and `resource.h`, so the Win32, x64, and XP binaries embed Windows file version metadata directly.
+
 ## How It Works
 
 MDView is a WLX lister plugin that Total Commander loads when you press `F3` on a matching file type. It contains a built-in Markdown-to-HTML converter and embeds an MSHTML WebBrowser control to render the output. Keyboard input is handled by subclassing the browser's internal window, giving reliable hotkey interception without interfering with normal scrolling or Total Commander key handling. The OLE control and its child window hierarchy are resized via `IOleInPlaceObject::SetObjectRects` and `MoveWindow` so the viewer fills the lister window at any size. Settings are persisted via the standard Total Commander INI mechanism.
 
 ## File List
 
-| File              | Description                                                                                        |
-| ----------------- | -------------------------------------------------------------------------------------------------- |
-| `mdview.c`        | Complete plugin source                                                                             |
-| `mdview.def`      | DLL export definitions                                                                             |
-| `pluginst.inf`    | Total Commander auto-install manifest                                                              |
-| `test.md`         | Broad Markdown regression and feature sample                                                       |
+| File | Description |
+|---|---|
+| `mdview.c` | Complete plugin source |
+| `mdview.def` | DLL export definitions |
+| `resource.rc` | Windows version resource embedded into the generated WLX binaries |
+| `resource.h` | Shared version-number macros used by the resource script |
+| `pluginst.inf` | Total Commander auto-install manifest |
+| `test.md` | Broad Markdown regression and feature sample |
 | `test_mermaid.md` | Dedicated Mermaid sample document covering the Mermaid diagram types currently supported by MDView |
 
 ## License

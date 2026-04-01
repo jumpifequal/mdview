@@ -61,6 +61,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "resource.h"
 
 /* ── TC Lister Plugin Interface ──────────────────────────────────────── */
 
@@ -2295,6 +2296,13 @@ __declspec(dllexport) HWND __stdcall ListLoad(HWND pw, char* file, int flags) {
 
     size_t fl=strlen(body)+cssBuf.len+jsBuf.len+strlen(ui)+1024;
     char* full=(char*)malloc(fl);
+    if (!full) {
+        free(body);
+        free(cssBuf.data);
+        free(jsBuf.data);
+        free(md);
+        return NULL;
+    }
     snprintf(full,fl,
         "<!DOCTYPE html><html%s><head>"
         "<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">"
@@ -2306,10 +2314,16 @@ __declspec(dllexport) HWND __stdcall ListLoad(HWND pw, char* file, int flags) {
     RECT rc; GetClientRect(pw,&rc);
     HWND hwnd=CreateWindowExW(0,CLASS_NAME,L"MDView",
         WS_CHILD|WS_VISIBLE|WS_CLIPCHILDREN,0,0,rc.right,rc.bottom,pw,NULL,g_hInstance,NULL);
-    if(!hwnd){free(full);return NULL;}
+    if(!hwnd){free(full); free(md); return NULL;}
 
     OleInitialize(NULL);
     MDViewData* data=(MDViewData*)calloc(1,sizeof(MDViewData));
+    if (!data) {
+        free(full);
+        free(md);
+        DestroyWindow(hwnd);
+        return NULL;
+    }
     data->hwndContainer = hwnd;
     data->mdUtf8 = md;
     mdview_set_window_ptr(hwnd, GWLP_USERDATA, (LONG_PTR)data);
@@ -2347,9 +2361,22 @@ __declspec(dllexport) HWND __stdcall ListLoad(HWND pw, char* file, int flags) {
 }
 
 __declspec(dllexport) HWND __stdcall ListLoadW(HWND pw, WCHAR* file, int flags) {
+    if (!file) return NULL;
+
     int len=WideCharToMultiByte(CP_UTF8,0,file,-1,NULL,0,NULL,NULL);
-    char* u=(char*)malloc(len); WideCharToMultiByte(CP_UTF8,0,file,-1,u,len,NULL,NULL);
-    HWND r=ListLoad(pw,u,flags); free(u); return r;
+    if (len <= 0) return NULL;
+
+    char* u=(char*)malloc((size_t)len);
+    if (!u) return NULL;
+
+    if (WideCharToMultiByte(CP_UTF8,0,file,-1,u,len,NULL,NULL) <= 0) {
+        free(u);
+        return NULL;
+    }
+
+    HWND r=ListLoad(pw,u,flags);
+    free(u);
+    return r;
 }
 
 __declspec(dllexport) void __stdcall ListCloseWindow(HWND w) { DestroyWindow(w); }
