@@ -56,12 +56,12 @@ v 2.8
 v 3.0
 - add: char with spaces count
 
-v3.1
+v3.1 (internal)
 - add: Respect Total Commander interaction patterns where applicable. Keys 1..9, N, and P must work according to the concept adopted in Total Commander. F3 and F7 behave like CTRL-F
 - fix: no temporary html files are created now, all is in memory
 - add: support for mixed html, md files with html tags
 - add: scale is now visible
-- fix: modal dialog fox low-rew screen is not entirely visible
+- fix: modal dialog for low-res screen is not entirely visible
 - fix: scrolling is jerky and cannot be controlled line-by-line, also in split view
 - fix: TOC is useful but link positioning is incorrect.
 - fix: Line Numbers is toggleable, but the UI/state handling is wrong.
