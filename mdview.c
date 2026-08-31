@@ -2130,7 +2130,7 @@ static char* md_to_html(const char* markdown, const char* currentFile) {
             while(i<lines.count){
                 const char* pl=lines.lines[i]; int pi=get_indent(pl); const char* pt=pl+pi;
                 int compactEntry;
-                if(pt[0]=='\0')break; if(pt[0]=='#'&&pt[1]==' ')break; if(is_hr(pl))break;
+                if(pt[0]=='\0')break; if(pt[0]=='#'){int nh=0;while(pt[nh]=='#')nh++;if(nh>=1&&nh<=6&&pt[nh]==' ')break;} if(is_hr(pl))break;
                 if(pt[0]=='>'&&(pt[1]==' '||pt[1]=='\0'))break;
                 if(strncmp(pt,"```",3)==0||strncmp(pt,"~~~",3)==0)break;
                 if(_strnicmp(pt,"<details",8)==0)break;
