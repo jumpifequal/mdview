@@ -2130,7 +2130,7 @@ static char* md_to_html(const char* markdown, const char* currentFile) {
             while(i<lines.count){
                 const char* pl=lines.lines[i]; int pi=get_indent(pl); const char* pt=pl+pi;
                 int compactEntry;
-                if(pt[0]=='\0')break; if(pt[0]=='#'&&pt[1]==' ')break; if(is_hr(pl))break;
+                if(pt[0]=='\0')break; if(pt[0]=='#'){int nh=0;while(pt[nh]=='#')nh++;if(nh>=1&&nh<=6&&pt[nh]==' ')break;} if(is_hr(pl))break;
                 if(pt[0]=='>'&&(pt[1]==' '||pt[1]=='\0'))break;
                 if(strncmp(pt,"```",3)==0||strncmp(pt,"~~~",3)==0)break;
                 if(_strnicmp(pt,"<details",8)==0)break;
@@ -2816,7 +2816,7 @@ static void build_js(StrBuf* sb) {
     /* HTML/XML tags */
     "if(lang==='html'||lang==='xml'){"
     "h=h.replace(/(&lt;\\/?)([a-zA-Z][a-zA-Z0-9]*)/g,'$1<span class=\"sh-tag\">$2</span>');"
-    "h=h.replace(/\\s([a-zA-Z-]+)(=)/g,' <span class=\"sh-attr\">$1</span>$2');"
+    "h=h.replace(/\\s((?!class)[a-zA-Z-]+)(=)/g,' <span class=\"sh-attr\">$1</span>$2');"
     "}else{"
 
     /* Keywords per language family */
@@ -2837,7 +2837,7 @@ static void build_js(StrBuf* sb) {
     "kws='\\\\b(color|background|margin|padding|border|font|display|position|width|height|top|left|right|bottom|flex|grid|none|block|inline|relative|absolute|fixed|inherit|auto|important|solid|transparent)\\\\b';"
     "else if(lang==='php')"
     "kws='\\\\b(function|return|if|else|elseif|for|foreach|while|do|switch|case|break|continue|class|public|private|protected|static|new|echo|print|null|true|false|array|isset|empty|unset|require|include|use|namespace|try|catch|finally|throw|var)\\\\b';"
-    "if(kws){var re=new RegExp(kws,'g');h=h.replace(re,'<span class=\"sh-kw\">$1</span>');}"
+    "if(kws){var re=new RegExp(kws+'(?![=\\\"])','g');h=h.replace(re,'<span class=\"sh-kw\">$1</span>');}"
 
     /* Function calls: word followed by ( */
     "h=h.replace(/\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\(/g,'<span class=\"sh-fn\">$1</span>(');"
